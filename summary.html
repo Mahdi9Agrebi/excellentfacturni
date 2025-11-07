@@ -2,77 +2,125 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>تلخيص النصوص</title>
-    <link rel="stylesheet" href="css/style.css">
+    <title>ملخص النصوص الذكي</title>
     <style>
         body {
-            background-color: #f7f7f7;
             font-family: "Cairo", sans-serif;
+            background: linear-gradient(to bottom right, #553c9a, #9f7aea);
+            color: white;
             text-align: center;
-            direction: rtl;
+            padding: 20px;
+            min-height: 100vh;
         }
+
+        h2 {
+            margin-bottom: 15px;
+        }
+
         textarea {
             width: 90%;
-            max-width: 600px;
-            height: 200px;
-            padding: 10px;
+            max-width: 500px;
+            height: 180px;
             border-radius: 10px;
-            border: 1px solid #ccc;
-            font-size: 16px;
-            resize: none;
-            margin-top: 15px;
-        }
-        .result-box {
-            width: 90%;
-            max-width: 600px;
-            margin: 20px auto;
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            padding: 15px;
-            text-align: right;
-        }
-        button {
-            background: #2b6cb0;
-            color: white;
             border: none;
-            border-radius: 10px;
-            padding: 10px 25px;
-            margin-top: 15px;
-            cursor: pointer;
+            padding: 10px;
+            resize: none;
+            font-size: 15px;
+            direction: rtl;
         }
+
+        button {
+            margin-top: 15px;
+            padding: 10px 25px;
+            border: none;
+            border-radius: 8px;
+            background-color: #4c1d95;
+            color: white;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
         button:hover {
-            background: #245a99;
+            background-color: #6b21a8;
+        }
+
+        .output-box {
+            background-color: rgba(255, 255, 255, 0.15);
+            margin: 20px auto;
+            padding: 15px;
+            border-radius: 10px;
+            max-width: 500px;
+            min-height: 100px;
+            text-align: right;
+            line-height: 1.8;
+        }
+
+        a.back {
+            display: block;
+            margin-top: 15px;
+            color: white;
+            text-decoration: none;
+        }
+
+        a.back:hover {
+            text-decoration: underline;
         }
     </style>
 </head>
 <body>
-    <h2>أداة تلخيص النصوص</h2>
-    <p>ألصق نصك الطويل هنا، وسنلخّصه لك تلقائيًا 👇</p>
+    <h2>✍️ أداة تلخيص النصوص الذكية</h2>
+    <p>ألصق أي نص عربي وسأقوم بتلخيصه بطريقة احترافية</p>
 
-    <textarea id="inputText" placeholder="اكتب أو الصق النص هنا..."></textarea><br>
+    <textarea id="textInput" placeholder="ألصق النص هنا..."></textarea>
+    <br>
     <button onclick="summarize()">تلخيص النص</button>
 
-    <div id="summaryResult" class="result-box" style="display:none;"></div>
+    <div class="output-box" id="summaryOutput">الملخص سيظهر هنا...</div>
 
-    <a class="back" href="tools.html">⬅ العودة إلى صفحة الأدوات</a>
+    <a class="back" href="tools.html">🔙 العودة إلى الأدوات</a>
 
     <script>
         function summarize() {
-            const text = document.getElementById("inputText").value.trim();
-            const resultBox = document.getElementById("summaryResult");
+            const text = document.getElementById("textInput").value.trim();
+            const output = document.getElementById("summaryOutput");
 
             if (text === "") {
-                alert("الرجاء إدخال نص أولاً!");
+                output.textContent = "يرجى إدخال نص أولاً.";
                 return;
             }
 
-            // التلخيص التجريبي المحلي (بشكل مبسط)
-            let sentences = text.split(/[.!؟]/);
-            let summary = sentences.slice(0, Math.ceil(sentences.length / 3)).join(". ") + ".";
+            // تقسيم النص إلى جمل
+            const sentences = text.split(/[.!؟]/).filter(s => s.trim().length > 0);
 
-            resultBox.innerHTML = "<h3>📄 الملخص:</h3><p>" + summary + "</p>";
-            resultBox.style.display = "block";
+            if (sentences.length < 3) {
+                output.textContent = "النص قصير جدًا، لا يحتاج تلخيصًا.";
+                return;
+            }
+
+            // حساب تكرار الكلمات لتقدير الأهمية
+            const words = text.replace(/[^\w\s\u0600-\u06FF]/g, "").split(/\s+/);
+            const freq = {};
+            words.forEach(w => {
+                if (w.length > 2) freq[w] = (freq[w] || 0) + 1;
+            });
+
+            // تقييم الجمل حسب تكرار الكلمات المهمة
+            const scored = sentences.map(s => {
+                let score = 0;
+                s.split(/\s+/).forEach(w => {
+                    if (freq[w]) score += freq[w];
+                });
+                return { sentence: s, score };
+            });
+
+            // ترتيب الجمل حسب الأهمية
+            scored.sort((a, b) => b.score - a.score);
+
+            // أخذ أعلى الجمل (الملخص)
+            const summarySentences = scored.slice(0, Math.ceil(sentences.length / 3)).map(s => s.sentence.trim());
+            const summary = summarySentences.join(". ") + ".";
+
+            output.textContent = summary;
         }
     </script>
 </body>
