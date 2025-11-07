@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>تلخيص النصوص</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        body {
+            background-color: #f7f7f7;
+            font-family: "Cairo", sans-serif;
+            text-align: center;
+            direction: rtl;
+        }
+        textarea {
+            width: 90%;
+            max-width: 600px;
+            height: 200px;
+            padding: 10px;
+            border-radius: 10px;
+            border: 1px solid #ccc;
+            font-size: 16px;
+            resize: none;
+            margin-top: 15px;
+        }
+        .result-box {
+            width: 90%;
+            max-width: 600px;
+            margin: 20px auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 15px;
+            text-align: right;
+        }
+        button {
+            background: #2b6cb0;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 10px 25px;
+            margin-top: 15px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #245a99;
+        }
+    </style>
+</head>
+<body>
+    <h2>أداة تلخيص النصوص</h2>
+    <p>ألصق نصك الطويل هنا، وسنلخّصه لك تلقائيًا 👇</p>
+
+    <textarea id="inputText" placeholder="اكتب أو الصق النص هنا..."></textarea><br>
+    <button onclick="summarize()">تلخيص النص</button>
+
+    <div id="summaryResult" class="result-box" style="display:none;"></div>
+
+    <a class="back" href="tools.html">⬅ العودة إلى صفحة الأدوات</a>
+
+    <script>
+        function summarize() {
+            const text = document.getElementById("inputText").value.trim();
+            const resultBox = document.getElementById("summaryResult");
+
+            if (text === "") {
+                alert("الرجاء إدخال نص أولاً!");
+                return;
+            }
+
+            // التلخيص التجريبي المحلي (بشكل مبسط)
+            let sentences = text.split(/[.!؟]/);
+            let summary = sentences.slice(0, Math.ceil(sentences.length / 3)).join(". ") + ".";
+
+            resultBox.innerHTML = "<h3>📄 الملخص:</h3><p>" + summary + "</p>";
+            resultBox.style.display = "block";
+        }
+    </script>
+</body>
+</html>
