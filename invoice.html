@@ -1,41 +1,162 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <title>مولّد الفاتورة (PDF)</title>
-    <link rel="stylesheet" href="css/style.css">
+    <meta charset="utf-8" />
+    <title>مولّد الفواتير PDF</title>
+
+    <!-- Google Arabic font -->
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
+
+    <!-- jsPDF and html2canvas (used by jsPDF.html) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <style>
+        :root { --card-bg: #fff; --accent: #2b6cb0; --muted: #666; }
+        body { font-family: "Tajawal", sans-serif; background:#f4f6f8; margin:0; padding:28px; color:#222; }
+        h1 { text-align:center; margin-bottom:18px; font-weight:700; color:var(--accent); }
+        .container { max-width:420px; margin:0 auto; }
+        .card { background:var(--card-bg); border-radius:12px; padding:18px; box-shadow:0 6px 18px rgba(0,0,0,0.06); }
+        .field { display:flex; gap:8px; margin-bottom:10px; align-items:center; }
+        input[type="text"], input[type="number"] { flex:1; padding:10px 12px; border:1px solid #e6e9ee; border-radius:8px; }
+        label { min-width:84px; color:var(--muted); font-size:14px; }
+        button { width:100%; margin-top:8px; padding:10px; border:0; border-radius:8px; background:var(--accent); color:#fff; cursor:pointer; font-weight:700; }
+        button:active { transform:translateY(1px); }
+
+        /* Hidden invoice DOM (rendered to PDF) */
+        #invoice { width: 595px; /* A4 width in px at 72dpi used by jsPDF */ direction:rtl; font-family:"Tajawal",sans-serif; color:#222; }
+        .invoice-sheet { background:#fff; padding:28px; border-radius:6px; box-shadow:0 0 0 1px rgba(0,0,0,0.02); }
+        .invoice-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; }
+        .brand { font-weight:700; font-size:20px; color:var(--accent); }
+        .meta { text-align:left; font-size:13px; color:var(--muted); }
+        .line { height:1px; background:#eee; margin:12px 0; }
+        .items { width:100%; border-collapse:collapse; font-size:14px; }
+        .items th, .items td { padding:8px 6px; border-bottom:1px solid #f0f0f0; text-align:right; }
+        .items th { color:var(--muted); font-weight:700; }
+        .total { display:flex; justify-content:flex-end; gap:12px; margin-top:12px; font-weight:700; }
+        .small { font-size:12px; color:var(--muted); }
+        /* Hide the invoice preview on screen but keep for html rendering */
+        .invoice-preview { display:none; }
+        @media print {
+            body { background:#fff; }
+        }
+    </style>
 </head>
 <body>
-    <h2>مولّد الفاتورة (PDF)</h2>
+    <div class="container">
+        <h1>🧾 مولّد الفواتير (PDF)</h1>
 
-    <div style="max-width:400px;margin:20px auto;text-align:right;">
-        <label>اسم العميل:</label>
-        <input id="client" type="text" style="width:100%;padding:8px;margin-bottom:10px;">
-        
-        <label>المبلغ:</label>
-        <input id="amount" type="text" style="width:100%;padding:8px;margin-bottom:10px;">
-        
-        <button class="tool-btn" onclick="generatePDF()">إنشاء الفاتورة</button>
+        <div class="card">
+            <div class="field"><label>اسم العميل</label><input id="client" type="text" placeholder="مثال: شركة المثال"></div>
+            <div class="field"><label>المبلغ</label><input id="amount" type="number" min="0" step="0.01" placeholder="0.00"></div>
+            <div class="field"><label>الوصف</label><input id="desc" type="text" placeholder="خدمات / منتج"></div>
+            <button id="generateBtn">توليد الفاتورة (PDF)</button>
+        </div>
+
+        <!-- Hidden HTML invoice used for producing a high-quality PDF -->
+        <div class="invoice-preview" aria-hidden="true">
+            <div id="invoice">
+                <div class="invoice-sheet">
+                    <div class="invoice-header">
+                        <div class="brand">فاتورة</div>
+                        <div class="meta" id="metaArea">
+                            <div id="invNumber">رقم: —</div>
+                            <div id="invDate">التاريخ: —</div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="small">إلى:</div>
+                        <div id="toClient" style="font-weight:700; margin-bottom:8px;">---</div>
+                        <div class="small">الوصف:</div>
+                        <div id="forDesc" style="margin-bottom:12px;">---</div>
+                    </div>
+
+                    <div class="line"></div>
+
+                    <table class="items" role="table" aria-label="تفاصيل الفاتورة">
+                        <thead>
+                            <tr><th>الوصف</th><th style="width:90px">الكمية</th><th style="width:120px">المبلغ</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td id="itemDesc">—</td>
+                                <td style="text-align:center">1</td>
+                                <td id="itemAmount" style="text-align:left">0.00 د.ب</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="total">
+                        <div class="small">الإجمالي:</div>
+                        <div id="grandTotal" style="font-size:18px">0.00 د.ب</div>
+                    </div>
+
+                    <div class="small" style="margin-top:18px">شكرًا لتعاملكم معنا.</div>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <a class="back" href="tools.html">⬅ العودة إلى صفحة الأدوات</a>
-
     <script>
-        function generatePDF() {
+        // GitHub Copilot
+        (function () {
             const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
+            const btn = document.getElementById('generateBtn');
 
-            const client = document.getElementById("client").value || "اسم العميل";
-            const amount = document.getElementById("amount").value || "0";
+            function formatCurrency(num) {
+                const n = Number(num || 0);
+                return n.toLocaleString('ar-TN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' د.ب';
+            }
 
-            doc.text("فاتورة مبيعات", 90, 20);
-            doc.text("اسم العميل: " + client, 20, 40);
-            doc.text("المبلغ: " + amount + " ريال", 20, 50);
-            doc.text("شكرًا لتعاملكم معنا 💙", 20, 70);
+            function sanitizeFileName(name) {
+                return name.replace(/[^a-zA-Z0-9\u0600-\u06FF\-_. ]+/g, '').trim().replace(/\s+/g, '_') || 'فاتورة';
+            }
 
-            doc.save("فاتورة.pdf");
-        }
+            btn.addEventListener('click', async () => {
+                const client = document.getElementById('client').value.trim();
+                const amount = document.getElementById('amount').value;
+                const desc = document.getElementById('desc').value.trim() || 'خدمة';
+
+                if (!client || !amount) {
+                    alert('من فضلك أدخل الاسم والمبلغ');
+                    return;
+                }
+
+                // Fill the hidden invoice DOM
+                document.getElementById('toClient').textContent = client;
+                document.getElementById('forDesc').textContent = desc;
+                document.getElementById('itemDesc').textContent = desc;
+                document.getElementById('itemAmount').textContent = formatCurrency(amount);
+                document.getElementById('grandTotal').textContent = formatCurrency(amount);
+
+                const today = new Date();
+                document.getElementById('invDate').textContent = 'التاريخ: ' + today.toLocaleDateString('ar-TN');
+                document.getElementById('invNumber').textContent = 'رقم: ' + (Math.floor(Math.random() * 900000) + 100000);
+
+                // Create PDF from the hidden invoice element
+                const invoiceEl = document.getElementById('invoice');
+
+                const doc = new jsPDF({
+                    unit: 'pt',
+                    format: 'a4',
+                    putOnlyUsedFonts: true
+                });
+
+                // Use jsPDF.html to render the DOM. Increase scale for better quality.
+                await doc.html(invoiceEl, {
+                    x: 20,
+                    y: 20,
+                    html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+                    callback: function (doc) {
+                        const filename = sanitizeFileName('فاتورة_' + client) + '.pdf';
+                        doc.save(filename);
+                    },
+                    margin: [10, 10, 10, 10]
+                });
+            });
+        })();
     </script>
 </body>
 </html>
